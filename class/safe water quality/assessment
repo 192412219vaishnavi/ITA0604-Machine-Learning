@@ -1,0 +1,61 @@
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+
+# Create synthetic dataset
+np.random.seed(42)
+n = 240
+
+df = pd.DataFrame({
+    "pH": np.random.choice(["Acidic","Neutral","Alkaline"], n),
+    "Turbidity": np.random.choice(["Low","High"], n),
+    "TDS": np.random.choice(["Low","Medium","High"], n),
+    "Chlorine": np.random.choice(["Adequate","Low"], n),
+    "Microbial": np.random.choice(["Absent","Present"], n),
+    "Source": np.random.choice(["Protected","Community","Surface"], n)
+})
+
+# Generate class label
+df["Class"] = np.where(
+    (df["pH"]=="Neutral") &
+    (df["Turbidity"]=="Low") &
+    (df["Chlorine"]=="Adequate") &
+    (df["Microbial"]=="Absent"),
+    "Safe", "Needs Treatment"
+)
+
+X = df.drop("Class", axis=1)
+y = df["Class"]
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.20, random_state=42
+)
+
+# Preprocessing and Decision Tree
+preprocess = ColumnTransformer([
+    ("cat", OneHotEncoder(handle_unknown="ignore"), X.columns)
+])
+
+model = Pipeline([
+    ("preprocess", preprocess),
+    ("tree", DecisionTreeClassifier(
+        criterion="entropy", max_depth=6, random_state=42
+    ))
+])
+
+# Train and predict
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+
+# Evaluation
+print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+print("Accuracy :", accuracy_score(y_test, y_pred))
+print("Precision:", precision_score(y_test, y_pred, pos_label="Safe"))
+print("Recall   :", recall_score(y_test, y_pred, pos_label="Safe"))
+print("F1-score :", f1_score(y_test, y_pred, pos_label="Safe"))
